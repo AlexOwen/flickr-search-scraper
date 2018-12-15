@@ -7,7 +7,7 @@ const axios = require('axios'),
     fs = require('fs');
 
 const sort = 'date-posted-asc',
-    perPage = 10,
+    perPage = 100,
     searchTerm = process.argv[2],
     apiKey = process.argv[3]
 
