@@ -193,6 +193,7 @@ async function parsePage(photos) {
 }
 
 // Requests a page from the server
+let requestErrorCount = 0;
 async function requestPage(number, startTime, endTime) {
     try {
         const searchURL = `https://api.flickr.com/services/rest?sort=${sort}&view_all=1&parse_tags=1&content_type=7&extras=geo%2Ctags%2Cmachine_tags%2Cdate_taken%2Cowner_datecreate%2Cispro%2Cdate_upload%2Ccan_comment%2Ccount_comments%2Ccount_faves%2Cdescription%2Cisfavorite%2Clicense%2Cmedia%2Cneeds_interstitial%2Cowner_name%2Cpath_alias%2Crealname%2Crotation%2Curl_o%2Curl_k%2Curl_h%2Curl_l%2Curl_c%2Curl_z%2Curl_m&per_page=${perPage}&page=${number}&lang=en-US&safe_search=3&view_all=1&min_upload_date=${startTime}&max_upload_date=${endTime}&media=photos&text=${searchTerm}&viewerNSID=&method=flickr.photos.search&csrf=&api_key=${apiKey}&format=json&hermes=1&hermesClient=1&reqId=b1cade4b&nojsoncallback=1`;
@@ -201,6 +202,8 @@ async function requestPage(number, startTime, endTime) {
             result = rawResult.data;
 
         if (result && result.photos) {
+            requestErrorCount = 0;
+            
             return [
                 result.photos.photo,
                 result.photos.pages,
@@ -211,6 +214,8 @@ async function requestPage(number, startTime, endTime) {
 
                 // if the API key is invalid, get a new one
                 if (result.code === 100) {
+                    requestErrorCount++;
+
                     apiKey = await getAPIKey();
                 }
 
@@ -221,8 +226,17 @@ async function requestPage(number, startTime, endTime) {
             return [];
         }
     } catch (err) {
-        console.log(err);
-        return [];
+        console.log(`An error occurred requesting page ${number} of range ${new Date(startTime * 1000).toUTCString()} - ${new Date(endTime * 1000).toUTCString()}`);
+        requestErrorCount++;
+
+        if (requestErrorCount < 5) {
+            console.log('Retrying in ' + requestErrorCount * 3 + 's');
+            await sleep(requestErrorCount * 3000);
+            return await requestPage(number, startTime, endTime);
+        } else {
+            console.log(`Too many consecutive errors (${requestErrorCount}). Retry later.`);
+            return [];
+        }
     }
 }
 
@@ -235,7 +249,6 @@ function sleep(ms) {
 async function getAPIKey() {
 
     let browser;
-    console.log(sandbox);
     if (sandbox) {
         browser = await puppeteer.launch();
     } else {
