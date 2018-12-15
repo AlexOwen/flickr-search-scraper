@@ -4,7 +4,10 @@ The JSON file contains as much meta data as I can get from the raw API, more can
 
 Images are saved to ./images/
 
-The script is used by typing `npm run start "search_term" "api_key" "start_page"`
+The script is used by typing `npm run start "search_term" "api_key" "unix_time" "start_page"`
+
+unix_time = the unix timestamp to start at, used for resuming. Can be got from the console output of a previously interrupted run.
+start_page = the page from the time period (unix_time to unix_time + 1 week) to resume from.
 
 An API key can be obtained without logging in by opening the Network tab in Chrome dev tools, running a search on Flickr, then finding the request to api.flickr.com/rest and the parameter in that request called api_key.
 

@@ -7,18 +7,22 @@ const axios = require('axios'),
     fs = require('fs');
 
 const sort = 'date-posted-asc',
-    perPage = 50,
+    perPage = 10,
     searchTerm = process.argv[2],
-    apiKey = process.argv[3],
-    startPage = (process.argv[3] && !isNaN(parseInt(process.argv[4]))) ? parseInt(process.argv[4]) : 1;
+    apiKey = process.argv[3]
 
 let errorCount = 0,
-    photosSaved = 0;
+    photosSaved = 0,                
+    startTime = (process.argv[4] && !isNaN(parseInt(process.argv[4]))) ? parseInt(process.argv[4]) : 1075507200;        // specified time or 2014/02/01 - just before Flickr started
+    endTime = addOneWeek(startTime),                                                                                    // 4 weeks later
+    startPage = (process.argv[5] && !isNaN(parseInt(process.argv[5]))) ? parseInt(process.argv[5]) : 1;
 
 // Requests a page from the server
 const requestPage = async (number) => {
     try {
-        const rawResult = await axios.get(`https://api.flickr.com/services/rest?sort=${sort}&parse_tags=1&content_type=7&extras=date_taken%2Cowner_datecreate%2Cispro%2Cdate_upload%2Ccan_comment%2Ccount_comments%2Ccount_faves%2Cdescription%2Cisfavorite%2Clicense%2Cmedia%2Cneeds_interstitial%2Cowner_name%2Cpath_alias%2Crealname%2Crotation%2Curl_o%2Curl_k%2Curl_h%2Curl_l%2Curl_c%2Curl_z%2Curl_m&per_page=${perPage}&page=${number}&lang=en-US&safe_search=1&view_all=1&min_upload_date=0&max_upload_date=${Date.now()/1000}&media=photos&text=${searchTerm}&viewerNSID=&method=flickr.photos.search&csrf=&api_key=${apiKey}&format=json&hermes=1&hermesClient=1&reqId=b1cade4b&nojsoncallback=1`),
+        const searchURL = `https://api.flickr.com/services/rest?sort=${sort}&view_all=1&parse_tags=1&content_type=7&extras=date_taken%2Cowner_datecreate%2Cispro%2Cdate_upload%2Ccan_comment%2Ccount_comments%2Ccount_faves%2Cdescription%2Cisfavorite%2Clicense%2Cmedia%2Cneeds_interstitial%2Cowner_name%2Cpath_alias%2Crealname%2Crotation%2Curl_o%2Curl_k%2Curl_h%2Curl_l%2Curl_c%2Curl_z%2Curl_m&per_page=${perPage}&page=${number}&lang=en-US&safe_search=0&view_all=1&min_upload_date=${startTime}&max_upload_date=${endTime}&media=photos&text=${searchTerm}&viewerNSID=&method=flickr.photos.search&csrf=&api_key=${apiKey}&format=json&hermes=1&hermesClient=1&reqId=b1cade4b&nojsoncallback=1`;
+        console.log(searchURL);
+        const rawResult = await axios.get(searchURL),
             result = rawResult.data;
 
         if (result && result.photos) {
@@ -157,48 +161,60 @@ const downloadPhoto = async (url) => {
         fs.mkdirSync('./images/' + searchTerm);
     }
 
-    console.log('Requesting page ' + startPage);
-    let [photos, pages] = await requestPage(startPage);
-    if (photos && pages) {
-        console.log('Pages to fetch: ' + pages)
-        console.log('Total results: ' + photos.length);
+    while (endTime < ((Math.round((new Date()).getTime() / 1000)))) {
+        console.log(`Starting date range: ${startTime} - ${endTime}`);      // Flickr only returns around 4000 unique results per search
 
-        await parsePage(photos); // first page
+        console.log('Requesting page ' + startPage);
+        let [photos, pages] = await requestPage(startPage);
+        if (photos && photos.length > 0 && pages && pages > 0) {
+            console.log('Pages to fetch: ' + pages)
+            console.log('Total results: ' + photos.length);
 
-        if (pages >= 2) {
-            for (let n = startPage + 1; n < pages; n++) { // the rest of the pages 
-                console.log('Requesting page ' + n);
+            await parsePage(photos); // first page
 
-                const [photos, newPages] = await requestPage(n);
+            if (pages >= 2) {
+                for (let n = startPage + 1; n <= pages; n++) { // the rest of the pages 
+                    console.log('Requesting page ' + n);
 
-                if (photos && newPages) {
-                    errorCount = 0;
-                    pages = newPages; // In case the page count changes over the job
-                    await parsePage(photos);
-                    console.log('Parsed page ' + n + ' of ' + newPages);
-                } else {
-                    console.log('An error occurred');
-                    errorCount++;
+                    const [photos, newPages] = await requestPage(n);
 
-                    if (errorCount < 5) {
-                        console.log('Retrying in ' + errorCount * 3 + 's');
-                        n--;
-                        await sleep(errorCount * 3000);
+                    if (photos && newPages) {
+                        errorCount = 0;
+                        pages = newPages; // In case the page count changes over the job
+                        await parsePage(photos);
+                        console.log('Parsed page ' + n + ' of ' + newPages);
                     } else {
-                        break;
+                        console.log('An error occurred');
+                        errorCount++;
+
+                        if (errorCount < 5) {
+                            console.log('Retrying in ' + errorCount * 3 + 's');
+                            n--;
+                            await sleep(errorCount * 3000);
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
+        } else {
+            if (!photos) console.log('No photos returned');
+            if (!pages) console.log('No page count returned');
         }
-    } else {
-        if (!photos) console.log('No photos returned');
-        if (!pages) console.log('No page count returned');
-    }
 
+        console.log(`Completed date range: ${startTime} - ${endTime}`);
+        startTime = endTime;
+        endTime = addOneWeek(startTime);
+        startPage = 1;
+    }
 })();
 
 function sleep(ms) {
     return new Promise(resolve => {
         setTimeout(resolve, ms);
     });
+}
+
+function addOneWeek(date) {
+    return date + 28 * 24 * 60 * 60;
 }
