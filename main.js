@@ -2,7 +2,7 @@
  * This is a quick script to capture a JSON file of all search results for a given search term.
  * The resulting JSON file could be used for scraping the photos directly. This functionality is not contained in this script.
  * 
- * The script is used by typing `npm run start "search_term" "api_key"`
+ * The script is used by typing `npm run start "search_term" "api_key" "start_page"`
  * 
  * An API key can be obtained without logging in by opening the Network tab in Chrome dev tools, running a search on Flickr, then finding the request to api.flickr.com/rest and the parameter in that request called api_key
  * 
@@ -17,9 +17,11 @@ const axios = require('axios'),
 const sort = 'date-posted-asc',
       perPage = 50,
       searchTerm = process.argv[2],
-      apiKey = process.argv[3];
+      apiKey = process.argv[3],
+      startPage = (process.argv[3] && !isNaN(parseInt(process.argv[4]))) ? parseInt(process.argv[4]) : 1;
 
-let errorCount = 0;
+let errorCount = 0,
+    photosSaved = 0;
 
 // Requests a page from the server
 const requestPage = async (number) => {
@@ -27,10 +29,19 @@ const requestPage = async (number) => {
         const rawResult = await axios.get(`https://api.flickr.com/services/rest?sort=${sort}&parse_tags=1&content_type=7&extras=date_taken%2Cowner_datecreate%2Cispro%2Cdate_upload%2Ccan_comment%2Ccount_comments%2Ccount_faves%2Cdescription%2Cisfavorite%2Clicense%2Cmedia%2Cneeds_interstitial%2Cowner_name%2Cpath_alias%2Crealname%2Crotation%2Curl_o%2Curl_k%2Curl_h%2Curl_l%2Curl_c%2Curl_z%2Curl_m&per_page=${perPage}&page=${number}&lang=en-US&safe_search=1&view_all=1&min_upload_date=0&max_upload_date=${Date.now()/1000}&media=photos&text=${searchTerm}&viewerNSID=&method=flickr.photos.search&csrf=&api_key=${apiKey}&format=json&hermes=1&hermesClient=1&reqId=b1cade4b&nojsoncallback=1`),
               result = rawResult.data;
         
-        return [
-            result.photos.photo,
-            result.photos.pages
-        ];
+        if (result && result.photos) {
+            return [
+                result.photos.photo,
+                result.photos.pages
+            ];
+        } else {
+            if (result) {
+                console.log(result);
+            } else {
+                console.log('No result from server');
+            }
+            return [];
+        }
     } catch (err) { 
         console.log(err);
         return [];
@@ -90,43 +101,51 @@ const parsePage = (photos) => {
                 dateCreate: photo.owner_datecreate
             };
 
-            console.log(data);
+            // console.log(data);
             fs.appendFileSync(searchTerm + '.json', JSON.stringify(data) + ',');
+            photosSaved++;
         }
     }
+    console.log('Photos saved to file: ' + photosSaved);
 };
 
 (async () => {
-    let [photos, pages] = await requestPage(1);
-    console.log('Pages to fetch: ' + pages)
-    console.log('Total results: ' + photos.length);
+    console.log('Requesting page ' + startPage);
+    let [photos, pages] = await requestPage(startPage);
+    if (photos && pages) {
+        console.log('Pages to fetch: ' + pages)
+        console.log('Total results: ' + photos.length);
 
-    parsePage(photos);                              // first page
+        parsePage(photos);                                          // first page
 
-    if (pages >= 2) {
-        for (let n = 2; n < pages; n++) {           // the rest of the pages 
-            console.log('Requesting page ' + n);
+        if (pages >= 2) {
+            for (let n = startPage + 1; n < pages; n++) {           // the rest of the pages 
+                console.log('Requesting page ' + n);
 
-            const [photos, newPages] = await requestPage(n);
+                const [photos, newPages] = await requestPage(n);
 
-            if (photos && newPages) {
-                errorCount = 0;
-                pages = newPages;
-                parsePage(photos);
-                console.log('Parsed page ' + n + ' of ' + newPages);
-            } else {
-                console.log('An error occurred');
-                errorCount++;
-
-                if (errorCount < 5) {
-                    console.log('Retrying in ' + errorCount * 3 + 's');
-                    n--;
-                    await sleep(errorCount * 3000);
+                if (photos && newPages) {
+                    errorCount = 0;
+                    pages = newPages;                               // In case the page count changes over the job
+                    parsePage(photos);
+                    console.log('Parsed page ' + n + ' of ' + newPages);
                 } else {
-                    break;
+                    console.log('An error occurred');
+                    errorCount++;
+
+                    if (errorCount < 5) {
+                        console.log('Retrying in ' + errorCount * 3 + 's');
+                        n--;
+                        await sleep(errorCount * 3000);
+                    } else {
+                        break;
+                    }
                 }
             }
         }
+    } else {
+        if (!photos) console.log('No photos returned');
+        if (!pages) console.log('No page count returned');
     }
 
 })();
