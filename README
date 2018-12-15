@@ -1,6 +1,8 @@
-This is a quick script to capture a JSON file of all search results for a given search term.
+This is a quick script to capture a JSON file of all search results for a given search term, along with the best version of each image in the search.
 
-The resulting JSON file could be used for scraping the photos directly. This functionality is not contained in this script.
+The JSON file contains as much meta data as I can get from the raw API, more can be got by calling the API for each photo (rather than each page of results), but that would put a lot of stress on the server and might get your key/IP banned.
+
+Images are saved to ./images/
 
 The script is used by typing `npm run start "search_term" "api_key" "start_page"`
 
