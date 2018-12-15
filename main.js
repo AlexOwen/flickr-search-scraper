@@ -80,29 +80,34 @@ const parsePage = async (photos) => {
                 if (photo.width_m) width = photo.width_m;
             }
 
-            const data = {
-                url: bestURL,
-                filename: bestURL.split('/')[bestURL.split('/').length - 1].split('?')[0],
-                title: photo.title,
-                license: photo.license,
-                description: photo.description ? photo.description._content : '',
-                rotation: photo.rotation,
-                owner: photo.owner,
-                ownerName: photo.ownername,
-                height,
-                width,
-                dateTaken: photo.datetaken,
-                dateUpload: photo.dateupload,
-                dateCreate: photo.owner_datecreate
-            };
+            // No lower res photos as there's little point
 
-            // console.log(data);
-            downloadPromises.push(downloadPhoto(bestURL));
-            fs.appendFileSync(searchTerm + '.json', JSON.stringify(data) + ',');
-            photosSaved++;
+            if (bestURL !== '') {
+                const data = {
+                    url: bestURL,
+                    filename: bestURL.split('/')[bestURL.split('/').length - 1].split('?')[0],
+                    title: photo.title,
+                    license: photo.license,
+                    description: photo.description ? photo.description._content : '',
+                    rotation: photo.rotation,
+                    owner: photo.owner,
+                    ownerName: photo.ownername,
+                    height,
+                    width,
+                    dateTaken: photo.datetaken,
+                    dateUpload: photo.dateupload,
+                    dateCreate: photo.owner_datecreate
+                };
+
+                // console.log(data);
+                downloadPromises.push(downloadPhoto(bestURL));
+                fs.appendFileSync(searchTerm + '.json', JSON.stringify(data) + ',');
+                photosSaved++;
+            }
         }
     }
     console.log('Photos saved to file: ' + photosSaved);
+    console.log('Downloading ' + downloadPromises.length + ' photos');
 
     return await Promise.all(downloadPromises);
 };
@@ -110,7 +115,7 @@ const parsePage = async (photos) => {
 // Download a photo from a URL
 const downloadPhoto = async (url) => {
 
-    const filePath = path.resolve(__dirname, 'images', url.split('/')[url.split('/').length - 1].split('?')[0]);
+    const filePath = path.resolve(__dirname, 'images', searchTerm, url.split('/')[url.split('/').length - 1].split('?')[0]);
 
     let response;
 
@@ -146,6 +151,10 @@ const downloadPhoto = async (url) => {
 
     if (!fs.existsSync('./images')) {
         fs.mkdirSync('./images');
+    }
+
+    if (!fs.existsSync('./images/' + searchTerm)) {
+        fs.mkdirSync('./images/' + searchTerm);
     }
 
     console.log('Requesting page ' + startPage);
