@@ -4,17 +4,20 @@
 
 const axios = require('axios'),
     path = require('path'),
-    fs = require('fs');
+    fs = require('fs'),
+    puppeteer = require('puppeteer');
 
 const sort = 'date-posted-asc',
     perPage = 100,
-    searchTerm = process.argv[2],
-    apiKey = process.argv[3]
+    searchTerm = process.argv[2];
 
 let errorCount = 0,
-    photosSaved = 0;
+    photosSaved = 0,
+    apiKey = '';
 
 (async () => {
+
+    apiKey = await getAPIKey();
 
     if (!fs.existsSync('./images')) {
         fs.mkdirSync('./images');
@@ -56,7 +59,7 @@ async function getPhotos(startTime, endTime) {
                     await parsePage(pagePhotos);
                     console.log(`Completed page ${page} of ${pages}`);
 
-                    pages = newPages;       // The count might change
+                    pages = newPages; // The count might change
                     page++;
                 }
                 console.log(`Completed date range: ${new Date(startTime * 1000).toUTCString()} - ${new Date(endTime * 1000).toUTCString()}`);
@@ -66,12 +69,14 @@ async function getPhotos(startTime, endTime) {
         }
     } else {
         console.log('An error occurred');
-        console.log(photos, pages);
         errorCount++;
 
         if (errorCount < 5) {
             console.log('Retrying in ' + errorCount * 3 + 's');
             await sleep(errorCount * 3000);
+            getPhotos(startTime, endTime)
+        } else {
+            console.log(`Too many consecutive errors (${errorCount}). Retry later.`)
         }
     }
 }
@@ -202,6 +207,12 @@ async function requestPage(number, startTime, endTime) {
             ];
         } else {
             if (result) {
+
+                // if the API key is invalid, get a new one
+                if (result.code === 100) {
+                    apiKey = await getAPIKey();
+                }
+
                 console.log(result);
             } else {
                 console.log('No result from server');
@@ -218,4 +229,21 @@ function sleep(ms) {
     return new Promise(resolve => {
         setTimeout(resolve, ms);
     });
+}
+
+async function getAPIKey() {
+
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.goto('https://www.flickr.com/');
+
+    const apiKey = await page.evaluate(() => {
+        return this.YUI_config.flickr.api.site_key;
+    });
+
+    console.log('API Key: ' + apiKey);
+
+    await browser.close();
+
+    return apiKey;
 }

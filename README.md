@@ -4,9 +4,9 @@ The JSON file contains as much meta data as I can get from the raw API, more can
 
 Images are saved to ./images/search_term/
 
-The script is used by typing `npm run start "search_term" "api_key"
+The script is used by typing `npm run start "search_term"`
 
-An API key can be obtained without logging in by opening the Network tab in Chrome dev tools, running a search on Flickr, then finding the request to api.flickr.com/rest and the parameter in that request called api_key.
+The script will automatically retrieve an API key, and renew it mid-job if it expires.
 
 The resulting JSON file needs to have a [ added at the start and ] at the end manually.
 
