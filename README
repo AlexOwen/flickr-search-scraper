@@ -8,4 +8,6 @@ An API key can be obtained without logging in by opening the Network tab in Chro
 
 The resulting JSON file needs to have a [ added at the start and ] at the end manually.
 
+parents.json is a sample output.
+
 NOTE: This is largely untested, and I can't guarantee Flickr won't rate limit/ban you. It also probably violates their terms of service.
