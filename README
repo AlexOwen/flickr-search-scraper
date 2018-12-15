@@ -1,0 +1,11 @@
+This is a quick script to capture a JSON file of all search results for a given search term.
+
+The resulting JSON file could be used for scraping the photos directly. This functionality is not contained in this script.
+
+The script is used by typing `npm run start "search_term" "api_key"`
+
+An API key can be obtained without logging in by opening the Network tab in Chrome dev tools, running a search on Flickr, then finding the request to api.flickr.com/rest and the parameter in that request called api_key.
+
+The resulting JSON file needs to have a [ added at the start and ] at the end manually.
+
+NOTE: This is largely untested, and I can't guarantee Flickr won't rate limit/ban you. It also probably violates their terms of service.
