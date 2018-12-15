@@ -13,7 +13,7 @@ const sort = 'date-posted-asc',
 
 let errorCount = 0,
     photosSaved = 0,                
-    startTime = (process.argv[4] && !isNaN(parseInt(process.argv[4]))) ? parseInt(process.argv[4]) : 1075507200;        // specified time or 2014/02/01 - just before Flickr started
+    startTime = (process.argv[4] && !isNaN(parseInt(process.argv[4]))) ? parseInt(process.argv[4]) : 0;                 // specified time or the start of unix time (some photos are manually dated)
     endTime = addOneWeek(startTime),                                                                                    // 4 weeks later
     startPage = (process.argv[5] && !isNaN(parseInt(process.argv[5]))) ? parseInt(process.argv[5]) : 1;
 
