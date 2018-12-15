@@ -9,7 +9,8 @@ const axios = require('axios'),
 
 const sort = 'date-posted-asc',
     perPage = 100,
-    searchTerm = process.argv[2];
+    searchTerm = process.argv[2],
+    sandbox = process.argv[3] === '--no-sandbox' ? false : true;
 
 let errorCount = 0,
     photosSaved = 0,
@@ -233,7 +234,13 @@ function sleep(ms) {
 
 async function getAPIKey() {
 
-    const browser = await puppeteer.launch();
+    let browser;
+    if (sandbox) {
+        browser = await puppeteer.launch();
+    } else {
+        browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']});
+    }
+    
     const page = await browser.newPage();
     await page.goto('https://www.flickr.com/');
 

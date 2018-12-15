@@ -6,6 +6,8 @@ Images are saved to ./images/search_term/
 
 The script is used by typing `npm run start "search_term"`
 
+You can add --no-sandbox as the final argument if you are running on a headless Linux box and don't want to set up sandboxing as described here: https://github.com/GoogleChrome/puppeteer/blob/master/docs/troubleshooting.md
+
 The script will automatically retrieve an API key, and renew it mid-job if it expires.
 
 The resulting JSON file needs to have a [ added at the start and ] at the end manually.
