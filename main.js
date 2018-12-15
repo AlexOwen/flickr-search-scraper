@@ -10,7 +10,7 @@ const axios = require('axios'),
 const sort = 'date-posted-asc',
     perPage = 100,
     searchTerm = process.argv[2],
-    sandbox = process.argv[3] === '--no-sandbox' ? false : true;
+    sandbox = process.argv[3] === 'no-sandbox' ? false : true;
 
 let errorCount = 0,
     photosSaved = 0,
@@ -235,6 +235,7 @@ function sleep(ms) {
 async function getAPIKey() {
 
     let browser;
+    console.log(sandbox);
     if (sandbox) {
         browser = await puppeteer.launch();
     } else {
