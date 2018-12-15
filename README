@@ -4,10 +4,7 @@ The JSON file contains as much meta data as I can get from the raw API, more can
 
 Images are saved to ./images/search_term/
 
-The script is used by typing `npm run start "search_term" "api_key" "unix_time" "start_page"`
-
-unix_time = the unix timestamp to start at, used for resuming. Can be got from the console output of a previously interrupted run. By default this is 0, so you might see a lot of empty results while it goes through the 70s, 80s and 90s.
-start_page = the page from the time period (unix_time to unix_time + 1 week) to resume from.
+The script is used by typing `npm run start "search_term" "api_key"
 
 An API key can be obtained without logging in by opening the Network tab in Chrome dev tools, running a search on Flickr, then finding the request to api.flickr.com/rest and the parameter in that request called api_key.
 
@@ -16,3 +13,5 @@ The resulting JSON file needs to have a [ added at the start and ] at the end ma
 parents.json is a sample output.
 
 NOTE: This is largely untested, and I can't guarantee Flickr won't rate limit/ban you. It also probably violates their terms of service.
+
+TODO: Re-add resume functionality.
