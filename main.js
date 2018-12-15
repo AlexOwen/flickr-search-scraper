@@ -20,7 +20,7 @@ let errorCount = 0,
 // Requests a page from the server
 const requestPage = async (number) => {
     try {
-        const searchURL = `https://api.flickr.com/services/rest?sort=${sort}&view_all=1&parse_tags=1&content_type=7&extras=date_taken%2Cowner_datecreate%2Cispro%2Cdate_upload%2Ccan_comment%2Ccount_comments%2Ccount_faves%2Cdescription%2Cisfavorite%2Clicense%2Cmedia%2Cneeds_interstitial%2Cowner_name%2Cpath_alias%2Crealname%2Crotation%2Curl_o%2Curl_k%2Curl_h%2Curl_l%2Curl_c%2Curl_z%2Curl_m&per_page=${perPage}&page=${number}&lang=en-US&safe_search=0&view_all=1&min_upload_date=${startTime}&max_upload_date=${endTime}&media=photos&text=${searchTerm}&viewerNSID=&method=flickr.photos.search&csrf=&api_key=${apiKey}&format=json&hermes=1&hermesClient=1&reqId=b1cade4b&nojsoncallback=1`;
+        const searchURL = `https://api.flickr.com/services/rest?sort=${sort}&view_all=1&parse_tags=1&content_type=7&extras=geo%2Ctags%2Cmachine_tags%2Cdate_taken%2Cowner_datecreate%2Cispro%2Cdate_upload%2Ccan_comment%2Ccount_comments%2Ccount_faves%2Cdescription%2Cisfavorite%2Clicense%2Cmedia%2Cneeds_interstitial%2Cowner_name%2Cpath_alias%2Crealname%2Crotation%2Curl_o%2Curl_k%2Curl_h%2Curl_l%2Curl_c%2Curl_z%2Curl_m&per_page=${perPage}&page=${number}&lang=en-US&safe_search=3&view_all=1&min_upload_date=${startTime}&max_upload_date=${endTime}&media=photos&text=${searchTerm}&viewerNSID=&method=flickr.photos.search&csrf=&api_key=${apiKey}&format=json&hermes=1&hermesClient=1&reqId=b1cade4b&nojsoncallback=1`;
         console.log(searchURL);
         const rawResult = await axios.get(searchURL),
             result = rawResult.data;
@@ -100,7 +100,10 @@ const parsePage = async (photos) => {
                     width,
                     dateTaken: photo.datetaken,
                     dateUpload: photo.dateupload,
-                    dateCreate: photo.owner_datecreate
+                    dateCreate: photo.owner_datecreate,
+                    tags: photo.tags,
+                    machine_tags: photo.machine_tags,
+                    geo: photo.geo
                 };
 
                 // console.log(data);
