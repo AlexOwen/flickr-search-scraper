@@ -52,9 +52,11 @@ async function getPhotos(startTime, endTime) {
 
                 while (page <= pages) {
                     console.log(`Requesting page ${page} of ${pages}`)
-                    await parsePage(photos);
+                    let [pagePhotos, newPages, _] = await requestPage(page, startTime, endTime);
+                    await parsePage(pagePhotos);
                     console.log(`Completed page ${page} of ${pages}`);
 
+                    pages = newPages;       // The count might change
                     page++;
                 }
                 console.log(`Completed date range: ${new Date(startTime * 1000).toUTCString()} - ${new Date(endTime * 1000).toUTCString()}`);
