@@ -121,75 +121,77 @@ async function downloadPhoto(url) {
 async function parsePage(photos) {
     let downloadPromises = [];
 
-    for (let photo of photos) {
-        if (photo.ispro === 0) { // Only save photos that aren't on pro accounts
-            let bestURL = '';
-            let height = 0,
-                width = 0;
+    if (photos.length && photos.length > 0) {
+        for (let photo of photos) {
+            if (photo.ispro === 0) { // Only save photos that aren't on pro accounts
+                let bestURL = '';
+                let height = 0,
+                    width = 0;
 
-            if (photo.url_o_cdn) { // original
-                bestURL = photo.url_o_cdn;
-                if (photo.height_o) height = photo.height_o;
-                if (photo.width_o) width = photo.width_o;
-            } else if (photo.url_k_cdn) { // large 2048
-                bestURL = photo.url_k_cdn;
-                if (photo.height_n) height = photo.height_n;
-                if (photo.width_n) width = photo.width_n;
-            } else if (photo.url_h_cdn) { // large 1600
-                bestURL = photo.url_h_cdn;
-                if (photo.height_h) height = photo.height_h;
-                if (photo.width_h) width = photo.width_h;
-            } else if (photo.url_l_cdn) { // large 1024
-                bestURL = photo.url_l_cdn;
-                if (photo.height_l) height = photo.height_l;
-                if (photo.width_l) width = photo.width_l;
-            } else if (photo.url_c_cdn) { // medium 800
-                bestURL = photo.url_c_cdn;
-                if (photo.height_c) height = photo.height_c;
-                if (photo.width_c) width = photo.width_c;
-            } else if (photo.url_z_cdn) { // medium 640
-                bestURL = photo.url_z_cdn;
-                if (photo.height_z) height = photo.height_z;
-                if (photo.width_z) width = photo.width_z;
-            } else if (photo.url_m_cdn) { // medium 500
-                bestURL = photo.url_m_cdn;
-                if (photo.height_m) height = photo.height_m;
-                if (photo.width_m) width = photo.width_m;
-            }
+                if (photo.url_o_cdn) { // original
+                    bestURL = photo.url_o_cdn;
+                    if (photo.height_o) height = photo.height_o;
+                    if (photo.width_o) width = photo.width_o;
+                } else if (photo.url_k_cdn) { // large 2048
+                    bestURL = photo.url_k_cdn;
+                    if (photo.height_n) height = photo.height_n;
+                    if (photo.width_n) width = photo.width_n;
+                } else if (photo.url_h_cdn) { // large 1600
+                    bestURL = photo.url_h_cdn;
+                    if (photo.height_h) height = photo.height_h;
+                    if (photo.width_h) width = photo.width_h;
+                } else if (photo.url_l_cdn) { // large 1024
+                    bestURL = photo.url_l_cdn;
+                    if (photo.height_l) height = photo.height_l;
+                    if (photo.width_l) width = photo.width_l;
+                } else if (photo.url_c_cdn) { // medium 800
+                    bestURL = photo.url_c_cdn;
+                    if (photo.height_c) height = photo.height_c;
+                    if (photo.width_c) width = photo.width_c;
+                } else if (photo.url_z_cdn) { // medium 640
+                    bestURL = photo.url_z_cdn;
+                    if (photo.height_z) height = photo.height_z;
+                    if (photo.width_z) width = photo.width_z;
+                } else if (photo.url_m_cdn) { // medium 500
+                    bestURL = photo.url_m_cdn;
+                    if (photo.height_m) height = photo.height_m;
+                    if (photo.width_m) width = photo.width_m;
+                }
 
-            // No lower res photos as there's little point
+                // No lower res photos as there's little point
 
-            if (bestURL !== '') {
-                const data = {
-                    url: bestURL,
-                    filename: bestURL.split('/')[bestURL.split('/').length - 1].split('?')[0],
-                    title: photo.title,
-                    license: photo.license,
-                    description: photo.description ? photo.description._content : '',
-                    rotation: photo.rotation,
-                    owner: photo.owner,
-                    ownerName: photo.ownername,
-                    height,
-                    width,
-                    dateTaken: photo.datetaken,
-                    dateUpload: photo.dateupload,
-                    dateCreate: photo.owner_datecreate,
-                    tags: photo.tags,
-                    machine_tags: photo.machine_tags,
-                    geo: photo.geo
-                };
+                if (bestURL !== '') {
+                    const data = {
+                        url: bestURL,
+                        filename: bestURL.split('/')[bestURL.split('/').length - 1].split('?')[0],
+                        title: photo.title,
+                        license: photo.license,
+                        description: photo.description ? photo.description._content : '',
+                        rotation: photo.rotation,
+                        owner: photo.owner,
+                        ownerName: photo.ownername,
+                        height,
+                        width,
+                        dateTaken: photo.datetaken,
+                        dateUpload: photo.dateupload,
+                        dateCreate: photo.owner_datecreate,
+                        tags: photo.tags,
+                        machine_tags: photo.machine_tags,
+                        geo: photo.geo
+                    };
 
-                // console.log(data);
-                downloadPromises.push(downloadPhoto(bestURL));
-                fs.appendFileSync(searchTerm + '.json', JSON.stringify(data) + ',');
-                photosSaved++;
+                    // console.log(data);
+                    downloadPromises.push(downloadPhoto(bestURL));
+                    fs.appendFileSync(searchTerm + '.json', JSON.stringify(data) + ',');
+                    photosSaved++;
+                }
             }
         }
-    }
-    console.log('Photos saved to file: ' + photosSaved);
-    console.log('Downloading ' + downloadPromises.length + ' photos');
+        console.log('Photos saved to file: ' + photosSaved);
+        console.log('Downloading ' + downloadPromises.length + ' photos');
 
-    return await Promise.all(downloadPromises);
+        return await Promise.all(downloadPromises);
+    }
 }
 
 // Requests a page from the server
