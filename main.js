@@ -1,24 +1,31 @@
 /*
  * This is a quick script to capture a JSON file of all search results for a given search term and the best version of all non-pro images in the search.
  */
+'use strict';
 
 const axios = require('axios'),
     path = require('path'),
-    fs = require('fs'),
-    puppeteer = require('puppeteer');
+    fs = require('fs');
+
+const getAPIKey = require('./apiKey').getAPIKey,
+    helpers = require('./helpers'),
+    sleep = helpers.sleep,
+    formatDate = helpers.formatDate,
+    getFilenameFromURL = helpers.getFilenameFromURL,
+    handleError = helpers.handleError,
+    resetErrorCount = helpers.resetErrorCount;
 
 const sort = 'date-posted-asc',
     perPage = 100,
     searchTerm = process.argv[2],
     sandbox = process.argv[3] === 'no-sandbox' ? false : true;
 
-let errorCount = 0,
-    photosSaved = 0,
+let photosSaved = 0,
     apiKey = '';
 
 (async () => {
 
-    apiKey = await getAPIKey();
+    apiKey = await getAPIKey(sandbox);
 
     if (!fs.existsSync('./images')) {
         fs.mkdirSync('./images');
@@ -34,14 +41,14 @@ let errorCount = 0,
 
 // Recursive function to make sure we get all the photos
 async function getPhotos(startTime, endTime) {
-    console.log(`Starting date range: ${new Date(startTime * 1000).toUTCString()} - ${new Date(endTime * 1000).toUTCString()}`);
+    console.log(`Starting date range: ${formatDate(startTime)} - ${formatDate(endTime)}`);
 
     let [photos, pages, total] = await requestPage(1, startTime, endTime);
 
     if (typeof photos !== 'undefined' || typeof pages !== 'undefined') {
-        errorCount = 0;
+        resetErrorCount();
 
-        // Flickr only returns up to around 4000 unique results per query, so we might have to split by date range
+        // Flickr only returns up to around 4000 unique results per query (the rest are duplicates), so we might have to split by date range
         if (photos.length > 0 && pages > 0) {
             if (total > 3500) {
                 console.log(`Too many results (${total}), choosing smaller date range`);
@@ -63,29 +70,20 @@ async function getPhotos(startTime, endTime) {
                     pages = newPages; // The count might change
                     page++;
                 }
-                console.log(`Completed date range: ${new Date(startTime * 1000).toUTCString()} - ${new Date(endTime * 1000).toUTCString()}`);
+                console.log(`Completed date range: ${formatDate(startTime)} - ${formatDate(endTime)}`);
             }
         } else {
-            console.log(`No results for date range: ${new Date(startTime * 1000).toUTCString()} - ${new Date(endTime * 1000).toUTCString()}`);
+            console.log(`No results for date range: ${formatDate(startTime)} - ${formatDate(endTime)}`);
         }
     } else {
-        console.log('An error occurred');
-        errorCount++;
-
-        if (errorCount < 5) {
-            console.log('Retrying in ' + errorCount * 3 + 's');
-            await sleep(errorCount * 3000);
-            getPhotos(startTime, endTime)
-        } else {
-            console.log(`Too many consecutive errors (${errorCount}). Retry later.`)
-        }
+        console.log('No data');
     }
 }
 
 // Download a photo from a URL
 async function downloadPhoto(url) {
 
-    const filePath = path.resolve(__dirname, 'images', searchTerm, url.split('/')[url.split('/').length - 1].split('?')[0]);
+    const filePath = path.resolve(__dirname, 'images', searchTerm, getFilenameFromURL(url));
 
     let response;
 
@@ -96,7 +94,7 @@ async function downloadPhoto(url) {
             responseType: 'stream'
         });
     } catch (err) {
-        console.log('Failed to download ' + url.split('/')[url.split('/').length - 1].split('?')[0]);
+        console.log('Failed to download ' + getFilenameFromURL(url));
         console.log(err);
     }
 
@@ -105,12 +103,12 @@ async function downloadPhoto(url) {
 
         return new Promise((resolve, reject) => {
             response.data.on('end', () => {
-                console.log('Downloaded ' + url.split('/')[url.split('/').length - 1].split('?')[0]);
+                console.log('Downloaded ' + getFilenameFromURL(url));
                 resolve();
             });
 
             response.data.on('error', () => {
-                console.log('Failed to download ' + url.split('/')[url.split('/').length - 1].split('?')[0]);
+                console.log('Failed to download ' + getFilenameFromURL(url));
                 reject();
             });
         });
@@ -161,9 +159,11 @@ async function parsePage(photos) {
                 // No lower res photos as there's little point
 
                 if (bestURL !== '') {
+                    let filename = getFilenameFromURL(bestURL);
+
                     const data = {
                         url: bestURL,
-                        filename: bestURL.split('/')[bestURL.split('/').length - 1].split('?')[0],
+                        filename,
                         title: photo.title,
                         license: photo.license,
                         description: photo.description ? photo.description._content : '',
@@ -181,9 +181,14 @@ async function parsePage(photos) {
                     };
 
                     // console.log(data);
-                    downloadPromises.push(downloadPhoto(bestURL));
-                    fs.appendFileSync(searchTerm + '.json', JSON.stringify(data) + ',');
-                    photosSaved++;
+
+                    if (!photoExists(searchTerm, filename)) {
+                        downloadPromises.push(downloadPhoto(bestURL));
+                        fs.appendFileSync(searchTerm + '.json', JSON.stringify(data) + ',');
+                        photosSaved++;
+                    } else {
+                        console.log(`Skipping file (exists): ${filename}`);
+                    }
                 }
             }
         }
@@ -194,8 +199,17 @@ async function parsePage(photos) {
     }
 }
 
-// Requests a page from the server
-let requestErrorCount = 0;
+function photoExists(searchTerm, filename) {
+    let flag = true;
+    try {
+        fs.accessSync(`./images/${searchTerm}/${filename}`, fs.F_OK);
+    } catch(e) {
+        flag = false;
+    }
+    return flag;
+}
+
+// Requests a page of results from the server
 async function requestPage(number, startTime, endTime) {
     try {
         const searchURL = `https://api.flickr.com/services/rest?sort=${sort}&view_all=1&parse_tags=1&content_type=7&extras=geo%2Ctags%2Cmachine_tags%2Cdate_taken%2Cowner_datecreate%2Cispro%2Cdate_upload%2Ccan_comment%2Ccount_comments%2Ccount_faves%2Cdescription%2Cisfavorite%2Clicense%2Cmedia%2Cneeds_interstitial%2Cowner_name%2Cpath_alias%2Crealname%2Crotation%2Curl_o%2Curl_k%2Curl_h%2Curl_l%2Curl_c%2Curl_z%2Curl_m&per_page=${perPage}&page=${number}&lang=en-US&safe_search=3&view_all=1&min_upload_date=${startTime}&max_upload_date=${endTime}&media=photos&text=${searchTerm}&viewerNSID=&method=flickr.photos.search&csrf=&api_key=${apiKey}&format=json&hermes=1&hermesClient=1&reqId=b1cade4b&nojsoncallback=1`;
@@ -204,8 +218,7 @@ async function requestPage(number, startTime, endTime) {
             result = rawResult.data;
 
         if (result && result.photos) {
-            requestErrorCount = 0;
-            
+            resetErrorCount();
             return [
                 result.photos.photo,
                 result.photos.pages,
@@ -218,16 +231,10 @@ async function requestPage(number, startTime, endTime) {
 
                 // if the API key is invalid, get a new one
                 if (result.code === 100) {
-                    requestErrorCount++;
-
-                    if (requestErrorCount < 5) {
-                        console.log('Retrying in ' + requestErrorCount * 3 + 's');
-                        await sleep(requestErrorCount * 3000);
-                        apiKey = await getAPIKey();
-
+                    if (await handleError('The API key is invalid/expired')) {
+                        apiKey = await getAPIKey(sandbox);
                         return await requestPage(number, startTime, endTime);
                     } else {
-                        console.log(`Too many consecutive errors (${requestErrorCount}). Retry later.`);
                         return [];
                     }
                 }
@@ -235,51 +242,15 @@ async function requestPage(number, startTime, endTime) {
             } else {
                 console.log('No result from server');
             }
-
+            
+            resetErrorCount();
             return [[], 0, 0];
         }
     } catch (err) {
-        console.log(`An error occurred requesting page ${number} of range ${new Date(startTime * 1000).toUTCString()} - ${new Date(endTime * 1000).toUTCString()}`);
-        requestErrorCount++;
-
-        if (requestErrorCount < 5) {
-            console.log('Retrying in ' + requestErrorCount * 3 + 's');
-            await sleep(requestErrorCount * 3000);
+        if (await handleError(`Requesting page ${number} of range ${formatDate(startTime)} - ${formatDate(endTime)}`)) {
             return await requestPage(number, startTime, endTime);
         } else {
-            console.log(`Too many consecutive errors (${requestErrorCount}). Retry later.`);
             return [];
         }
     }
-}
-
-function sleep(ms) {
-    return new Promise(resolve => {
-        setTimeout(resolve, ms);
-    });
-}
-
-async function getAPIKey() {
-
-    console.log('Fetching new API Key');
-
-    let browser;
-    if (sandbox) {
-        browser = await puppeteer.launch();
-    } else {
-        browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']});
-    }
-    
-    const page = await browser.newPage();
-    await page.goto('https://www.flickr.com/');
-
-    const apiKey = await page.evaluate(() => {
-        return this.YUI_config.flickr.api.site_key;
-    });
-
-    console.log('New API Key: ' + apiKey);
-
-    await browser.close();
-
-    return apiKey;
 }
