@@ -214,18 +214,29 @@ async function requestPage(number, startTime, endTime) {
         } else {
             if (result) {
 
+                console.log(result);
+
                 // if the API key is invalid, get a new one
                 if (result.code === 100) {
                     requestErrorCount++;
 
-                    apiKey = await getAPIKey();
+                    if (requestErrorCount < 5) {
+                        console.log('Retrying in ' + requestErrorCount * 3 + 's');
+                        await sleep(requestErrorCount * 3000);
+                        apiKey = await getAPIKey();
+
+                        return await requestPage(number, startTime, endTime);
+                    } else {
+                        console.log(`Too many consecutive errors (${requestErrorCount}). Retry later.`);
+                        return [];
+                    }
                 }
 
-                console.log(result);
             } else {
                 console.log('No result from server');
             }
-            return [];
+
+            return [[], 0, 0];
         }
     } catch (err) {
         console.log(`An error occurred requesting page ${number} of range ${new Date(startTime * 1000).toUTCString()} - ${new Date(endTime * 1000).toUTCString()}`);
@@ -250,6 +261,8 @@ function sleep(ms) {
 
 async function getAPIKey() {
 
+    console.log('Fetching new API Key');
+
     let browser;
     if (sandbox) {
         browser = await puppeteer.launch();
@@ -264,7 +277,7 @@ async function getAPIKey() {
         return this.YUI_config.flickr.api.site_key;
     });
 
-    console.log('API Key: ' + apiKey);
+    console.log('New API Key: ' + apiKey);
 
     await browser.close();
 
