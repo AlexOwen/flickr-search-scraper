@@ -121,7 +121,7 @@ async function downloadPhoto(url) {
 async function parsePage(photos) {
     let downloadPromises = [];
 
-    if (photos.length && photos.length > 0) {
+    if (photos && photos.length && photos.length > 0) {
         for (let photo of photos) {
             if (photo.ispro === 0) { // Only save photos that aren't on pro accounts
                 let bestURL = '';
