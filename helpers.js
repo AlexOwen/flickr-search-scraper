@@ -15,8 +15,11 @@ function processArgs(argv) {
     console.log('Reading options:');
     for (let arg of argv) {
         if (arg.includes('=')) {
-            options[arg.split('=')[0]] = arg.split('=')[1];
-            console.log(`${arg.split('=')[0]} = ${arg.split('=')[1]}`);
+            let value = arg.split('=')[1];
+            if (value === 'false') value = false;
+            if (value === 'true') value = true;
+            options[arg.split('=')[0]] = value;
+            console.log(`${arg.split('=')[0]} = ${value}`);
         }
     }
     return options;
