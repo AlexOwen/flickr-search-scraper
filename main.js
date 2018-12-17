@@ -38,7 +38,7 @@ let photosSaved = 0,
         if (!fs.existsSync('./images/' + searchTerm)) {
             fs.mkdirSync('./images/' + searchTerm);
         }
-        
+
         getPhotos(startTime, endTime);
     } else {
         console.log('Failed: Start time is after end time');
@@ -59,10 +59,12 @@ async function getPhotos(startTime, endTime) {
         if (photos.length > 0 && pages > 0) {
             if (total > 3500) {
                 console.log(`Too many results (${total}), choosing smaller date range`);
-                let rangeMidPoint = (startTime + endTime) / 2;
+                let rangeMidPoint = Math.floor((startTime + endTime) / 2);
 
-                await getPhotos(startTime, rangeMidPoint);
-                await getPhotos(rangeMidPoint, endTime);
+                if (rangeMidPoint !== startTime) {                  // Avoid a potential infinite loop by breaking it. It might lose some results here but that's a limitation of the API.
+                    await getPhotos(startTime, rangeMidPoint);
+                    await getPhotos(rangeMidPoint, endTime);
+                }
             } else {
                 console.log(`Found ${total} photos`);
 
