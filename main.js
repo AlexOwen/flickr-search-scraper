@@ -18,24 +18,31 @@ const getAPIKey = require('./apiKey').getAPIKey,
 const sort = 'date-posted-asc',
     perPage = 100,
     searchTerm = process.argv[2],
-    sandbox = process.argv[3] === 'no-sandbox' ? false : true;
+    options = helpers.processArgs(process.argv),
+    sandbox = typeof options.sandbox === 'undefined' ? true : Boolean(options.sandbox),                     // Sandbox unless we're told not to
+    startTime = typeof options.start === 'undefined' ? 0 : parseInt(options.start),                         // Start from 0 unless anotehr time is specified (for resuming)
+    endTime = typeof options.end === 'undefined' ? (new Date()).getTime() / 1000 : parseInt(options.end);   // End now unless specified
 
 let photosSaved = 0,
     apiKey = '';
 
 (async () => {
 
-    apiKey = await getAPIKey(sandbox);
+    if (startTime < endTime) {
+        apiKey = await getAPIKey(sandbox);
 
-    if (!fs.existsSync('./images')) {
-        fs.mkdirSync('./images');
+        if (!fs.existsSync('./images')) {
+            fs.mkdirSync('./images');
+        }
+
+        if (!fs.existsSync('./images/' + searchTerm)) {
+            fs.mkdirSync('./images/' + searchTerm);
+        }
+        
+        getPhotos(startTime, endTime);
+    } else {
+        console.log('Failed: Start time is after end time');
     }
-
-    if (!fs.existsSync('./images/' + searchTerm)) {
-        fs.mkdirSync('./images/' + searchTerm);
-    }
-
-    getPhotos(0, (new Date()).getTime() / 1000);
 
 })();
 
@@ -70,7 +77,7 @@ async function getPhotos(startTime, endTime) {
                     pages = newPages; // The count might change
                     page++;
                 }
-                console.log(`Completed date range: ${formatDate(startTime)} - ${formatDate(endTime)}`);
+                console.log(`Completed date range: ${formatDate(startTime)} (${startTime}) - ${formatDate(endTime)} (${endTime})`);
             }
         } else {
             console.log(`No results for date range: ${formatDate(startTime)} - ${formatDate(endTime)}`);
@@ -247,7 +254,7 @@ async function requestPage(number, startTime, endTime) {
             return [[], 0, 0];
         }
     } catch (err) {
-        if (await handleError(`Requesting page ${number} of range ${formatDate(startTime)} - ${formatDate(endTime)}`)) {
+        if (await handleError(`Requesting page ${number} of range ${formatDate(startTime)} (${startTime}) - ${formatDate(endTime)} (${endTime})`)) {
             return await requestPage(number, startTime, endTime);
         } else {
             return [];

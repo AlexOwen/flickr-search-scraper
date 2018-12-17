@@ -6,7 +6,11 @@ Images are saved to ./images/search_term/
 
 The script is used by typing `npm run start "search_term"`
 
-You can add "no-sandbox" as the final argument if you are running on a headless Linux box and don't want to set up sandboxing as described here: https://github.com/GoogleChrome/puppeteer/blob/master/docs/troubleshooting.md
+Options:
+
+* Sandbox: add `sandbox=false` to disable sandboxing of Chrome when retrieving an API key. Useful if you are running on a headless Linux box and don't want to set up sandboxing as described here: https://github.com/GoogleChrome/puppeteer/blob/master/docs/troubleshooting.md
+* Start: add `start=` followed by a unix timestamp (in seconds). Useful for resuming a failed/incomplete scrape.
+* End: add `end=` followed by a unix timestamp (in seconds).
 
 The script will automatically retrieve an API key, and renew it mid-job if it expires.
 
@@ -15,5 +19,3 @@ The resulting JSON file needs to have a [ added at the start and ] at the end ma
 parents.json is a sample output.
 
 NOTE: This is largely untested, and I can't guarantee Flickr won't rate limit/ban you. It also probably violates their terms of service.
-
-TODO: Re-add resume functionality.
